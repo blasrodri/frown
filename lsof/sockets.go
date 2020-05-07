@@ -10,6 +10,7 @@ import (
 )
 
 func listOpenSockets(p *Process) ([]string, error) {
+	fmt.Printf("Process: %+v\n", p)
 	listFDNames := make([]string, 0)
 	procPidPath := fmt.Sprintf("/proc/%d/fd/", p.Pid)
 	files, err := ioutil.ReadDir(procPidPath)
@@ -21,6 +22,10 @@ func listOpenSockets(p *Process) ([]string, error) {
 			continue
 		}
 		link, err := os.Readlink(procPidPath + f.Name())
+		// TODO: Verify whether this makes any sense at all
+		if link == "" {
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +47,7 @@ func filterSocketsOnly(listFDs []string) []string {
 	return listSockets
 }
 
-func monitorUserConnections(connectionsHash string) ([]*connectionDetails, error) {
+func monitorUserConnections() ([]*connectionDetails, error) {
 	fileInfoBytes, err := ioutil.ReadFile("/proc/net/tcp")
 	if err != nil {
 		return nil, err
@@ -53,7 +58,7 @@ func monitorUserConnections(connectionsHash string) ([]*connectionDetails, error
 		return nil, errors.New("There are no open connections at the moment")
 	}
 	// the first line is a header that we do not care about
-	openConnections := connectionListStr[1:]
+	openConnections := connectionListStr[1:len(connectionListStr) - 1]
 	openConnectionsResult := make([]*connectionDetails, len(openConnections))
 	for i, line := range openConnections {
 		fields := strings.Fields(line)
@@ -66,7 +71,7 @@ func monitorUserConnections(connectionsHash string) ([]*connectionDetails, error
 		}
 		openConnectionsResult[i] = connectionDetails
 	}
-	return nil, nil
+	return openConnectionsResult, nil
 }
 
 type socketId = string
@@ -80,7 +85,7 @@ type connectionDetails struct {
 
 func getConnectionDetails(connectionFields []string) (*connectionDetails, error) {
 	// parse the /proc/{pid}/tcp line
-	sid := connectionFields[11]
+	sid := connectionFields[9]
 	localAddrIP := hexIpToDecimal(connectionFields[1][:8])
 	localAddrPort := hexPortToDecimal(connectionFields[1][9:])
 	remoteAddrIP := hexIpToDecimal(connectionFields[2][:8])
