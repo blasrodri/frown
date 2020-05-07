@@ -47,7 +47,7 @@ func filterSocketsOnly(listFDs []string) []string {
 	return listSockets
 }
 
-func monitorUserConnections() ([]*connectionDetails, error) {
+func MonitorUserConnections() ([]*connectionDetails, error) {
 	fileInfoBytes, err := ioutil.ReadFile("/proc/net/tcp")
 	if err != nil {
 		return nil, err

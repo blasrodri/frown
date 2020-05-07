@@ -35,7 +35,7 @@ func TestLoadSockets(t *testing.T) {
 }
 
 func TestMonitorUserConnections(t *testing.T) {
-	userConnections, err := monitorUserConnections()
+	userConnections, err := MonitorUserConnections()
 	if err != nil {
 		t.Fatal(err)
 	}
