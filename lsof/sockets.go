@@ -1,8 +1,10 @@
 package lsof
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"strings"
 )
@@ -19,7 +21,7 @@ func listOpenSockets(p *Process) ([]string, error) {
 			continue
 		}
 		link, err := os.Readlink(procPidPath + f.Name())
-		if err !=nil {
+		if err != nil {
 			return nil, err
 		}
 		listFDNames = append(listFDNames, link)
@@ -38,4 +40,56 @@ func filterSocketsOnly(listFDs []string) []string {
 		}
 	}
 	return listSockets
+}
+
+func monitorUserConnections(connectionsHash string) ([]*connectionDetails, error) {
+	fileInfoBytes, err := ioutil.ReadFile("/proc/net/tcp")
+	if err != nil {
+		return nil, err
+	}
+	fileInfoStr := string(fileInfoBytes)
+	connectionListStr := strings.Split(fileInfoStr, "\n")
+	if len(connectionListStr) < 2 {
+		return nil, errors.New("There are no open connections at the moment")
+	}
+	// the first line is a header that we do not care about
+	openConnections := connectionListStr[1:]
+	openConnectionsResult := make([]*connectionDetails, len(openConnections))
+	for i, line := range openConnections {
+		fields := strings.Fields(line)
+		if len(fields) < 12 {
+			return nil, errors.New("There are not enough attributes in line " + line)
+		}
+		connectionDetails, err := getConnectionDetails(fields)
+		if err != nil {
+			return nil, err
+		}
+		openConnectionsResult[i] = connectionDetails
+	}
+	return nil, nil
+}
+
+type socketId = string
+type connectionDetails struct {
+	SocketId       socketId
+	LocalAddrIP    net.IP
+	LocalAddrPort  string
+	RemoteAddrIP   net.IP
+	RemoteAddrPort string
+}
+
+func getConnectionDetails(connectionFields []string) (*connectionDetails, error) {
+	// parse the /proc/{pid}/tcp line
+	sid := connectionFields[11]
+	localAddrIP := hexIpToDecimal(connectionFields[1][:8])
+	localAddrPort := hexPortToDecimal(connectionFields[1][9:])
+	remoteAddrIP := hexIpToDecimal(connectionFields[2][:8])
+	remoteAddrPort := hexPortToDecimal(connectionFields[2][9:])
+	return &connectionDetails{
+		SocketId:       sid,
+		LocalAddrIP:    net.ParseIP(localAddrIP),
+		LocalAddrPort:  localAddrPort,
+		RemoteAddrIP:   net.ParseIP(remoteAddrIP),
+		RemoteAddrPort: remoteAddrPort,
+	}, nil
 }
