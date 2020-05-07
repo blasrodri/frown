@@ -10,6 +10,14 @@ import (
 func main() {
 	for {
 		time.Sleep(500 * time.Duration(time.Millisecond))
+
+		userPids, err := lsof.GetUserProcessList()
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, uProc := range userPids {
+			fmt.Printf("%+v\n", *uProc)
+		}
 		connDetails, err := lsof.MonitorUserConnections()
 		if err != nil {
 			log.Fatal(err)

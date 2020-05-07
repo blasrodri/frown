@@ -8,7 +8,26 @@ import (
 	"strconv"
 )
 
-func GetUserPids() ([]int, error) {
+func GetUserProcessList()([]*Process, error) {
+	listUserPids, err := getUserPids()
+	listProcesses := make([]*Process, len(listUserPids))
+
+	if err != nil {
+		return nil, err
+	}
+
+	for i, pid := range listUserPids {
+		process, err := newProcess(pid)
+		if err != nil {
+			return nil, err
+		}
+		listProcesses[i] = process
+	}
+
+	return listProcesses, nil
+}
+
+func getUserPids() ([]int, error) {
 	userInfo, err := user.Current()
 	userUid, err:= strconv.Atoi(userInfo.Uid)
 	userGuid, err:= strconv.Atoi(userInfo.Uid)

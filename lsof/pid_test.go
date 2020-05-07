@@ -10,7 +10,7 @@ import (
 func TestGetUserPids(t *testing.T) {
 	// Check that this pid is found as part of the user's pids
 	pid := os.Getpid()
-	result, err := GetUserPids()
+	result, err := getUserPids()
 	if err != nil {
 		t.Fatal(err)
 	}
