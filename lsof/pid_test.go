@@ -1,7 +1,6 @@
 package lsof
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
@@ -21,6 +20,5 @@ func TestGetUserPids(t *testing.T) {
 		}
 
 	}
-	fmt.Printf("%+v\n", result)
 	assert.True(t, assertionResult)
 }

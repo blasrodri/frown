@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"github.com/blasrodri/frown/lsof"
+	"github.com/blasrodri/frown/stats"
 	"log"
 	"time"
 )
@@ -123,7 +123,7 @@ func manageState() {
 		case connDeets := <-connectionsChan:
 			state.setConnDetails(connDeets)
 		default:
-			fmt.Println("Nothing goin on here...")
+			// Not much to do
 		}
 	}
 }
@@ -151,9 +151,18 @@ func manageConnections(connectionsChan chan<- []*lsof.ConnectionDetails) {
 }
 
 func reportSats(c *connectionsState) {
-	// TODO: Do something with the data :)
 	for {
+		report := stats.NewReport()
 		time.Sleep(500 * time.Duration(time.Millisecond))
-		fmt.Printf("%+v\n", c.connDeets)
+		for pid, sockIdToConnDeets := range c.connDeets {
+			processName := c.processes[pid].Name
+			for _, connDeets := range sockIdToConnDeets {
+				connectionReport, err := stats.AnalyzeSecurity(connDeets)
+				if err != nil {
+					log.Fatal(err)
+				}
+				report.AddConnectionReport(processName, pid, connectionReport)
+			}
+		}
 	}
 }

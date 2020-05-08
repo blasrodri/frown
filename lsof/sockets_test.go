@@ -1,7 +1,6 @@
 package lsof
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"testing"
@@ -35,11 +34,8 @@ func TestLoadSockets(t *testing.T) {
 }
 
 func TestMonitorUserConnections(t *testing.T) {
-	userConnections, err := MonitorUserConnections()
+	_, err := MonitorUserConnections()
 	if err != nil {
 		t.Fatal(err)
-	}
-	for i, _ := range userConnections {
-		fmt.Printf("%+v\n", *(userConnections[i]))
 	}
 }
