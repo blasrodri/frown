@@ -96,6 +96,7 @@ func manageState() {
 		select {
 		case listProcesses := <-processesChan:
 			state.setProcesses(listProcesses)
+			// remove state associated to dead processes
 			go func() {
 				for pid, _ := range state.processes {
 					p := &lsof.Process{
