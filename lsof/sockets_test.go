@@ -27,7 +27,7 @@ func TestLoadSockets(t *testing.T) {
 	// Do some stuff
 	pid := os.Getpid()
 	p, _ := newProcess(pid)
-	files, err := listOpenSockets(p)
+	files, err := ListOpenSockets(p)
 	if err != nil {
 		t.Fatal(err)
 	}

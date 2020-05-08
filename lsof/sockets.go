@@ -9,9 +9,17 @@ import (
 	"strings"
 )
 
-func listOpenSockets(p *Process) ([]string, error) {
-	fmt.Printf("Process: %+v\n", p)
-	listFDNames := make([]string, 0)
+type SocketId = string
+type ConnectionDetails struct {
+	SocketId       SocketId
+	LocalAddrIP    net.IP
+	LocalAddrPort  string
+	RemoteAddrIP   net.IP
+	RemoteAddrPort string
+}
+
+func ListOpenSockets(p *Process) ([]SocketId, error) {
+	listFDNames := make([]SocketId, 0)
 	procPidPath := fmt.Sprintf("/proc/%d/fd/", p.Pid)
 	files, err := ioutil.ReadDir(procPidPath)
 	if err != nil {
@@ -47,7 +55,7 @@ func filterSocketsOnly(listFDs []string) []string {
 	return listSockets
 }
 
-func MonitorUserConnections() ([]*connectionDetails, error) {
+func MonitorUserConnections() ([]*ConnectionDetails, error) {
 	fileInfoBytes, err := ioutil.ReadFile("/proc/net/tcp")
 	if err != nil {
 		return nil, err
@@ -59,7 +67,7 @@ func MonitorUserConnections() ([]*connectionDetails, error) {
 	}
 	// the first line is a header that we do not care about
 	openConnections := connectionListStr[1:len(connectionListStr) - 1]
-	openConnectionsResult := make([]*connectionDetails, len(openConnections))
+	openConnectionsResult := make([]*ConnectionDetails, len(openConnections))
 	for i, line := range openConnections {
 		fields := strings.Fields(line)
 		if len(fields) < 12 {
@@ -74,23 +82,14 @@ func MonitorUserConnections() ([]*connectionDetails, error) {
 	return openConnectionsResult, nil
 }
 
-type socketId = string
-type connectionDetails struct {
-	SocketId       socketId
-	LocalAddrIP    net.IP
-	LocalAddrPort  string
-	RemoteAddrIP   net.IP
-	RemoteAddrPort string
-}
-
-func getConnectionDetails(connectionFields []string) (*connectionDetails, error) {
+func getConnectionDetails(connectionFields []string) (*ConnectionDetails, error) {
 	// parse the /proc/{pid}/tcp line
 	sid := connectionFields[9]
 	localAddrIP := hexIpToDecimal(connectionFields[1][:8])
 	localAddrPort := hexPortToDecimal(connectionFields[1][9:])
 	remoteAddrIP := hexIpToDecimal(connectionFields[2][:8])
 	remoteAddrPort := hexPortToDecimal(connectionFields[2][9:])
-	return &connectionDetails{
+	return &ConnectionDetails{
 		SocketId:       sid,
 		LocalAddrIP:    net.ParseIP(localAddrIP),
 		LocalAddrPort:  localAddrPort,

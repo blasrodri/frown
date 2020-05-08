@@ -11,6 +11,7 @@ type Process struct {
 	Pid      int
 	Name     string
 	Parent   *Process
+	Sockets  map[string]bool
 }
 
 func newProcess(pid int) (*Process, error) {

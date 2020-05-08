@@ -45,7 +45,15 @@ func getUserPids() ([]int, error) {
 		if !dir.IsDir() {
 			continue
 		}
-		info, _ := os.Stat(cwd + "/" + dir.Name())
+		// 1. Ensure that there is a dir with the fd name
+		// 2. Ensure that the user has permissions on that dir
+		// 3. Ensure that the user has permissions on the status file
+		info, err := os.Stat(cwd + "/" + dir.Name())
+		if err != nil {
+			// Assume that the pid does not exist anymore
+			// Skip it
+			continue
+		}
 		var UID int
 		var GID int
 		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
@@ -56,7 +64,18 @@ func getUserPids() ([]int, error) {
 				if err != nil {
 					return nil, err
 				}
-				pids = append(pids,pid)
+				infoStatusFd, err := os.Stat(cwd + "/" + dir.Name() + "/" + "status")
+				if err != nil {
+					return nil, err
+				}
+				if stat, ok := infoStatusFd.Sys().(*syscall.Stat_t); ok {
+					UID = int(stat.Uid)
+					GID = int(stat.Gid)
+
+					if UID ==  userUid || GID == userGuid {
+						pids = append(pids,pid)
+					}
+				}
 			}
 		}
 	}
