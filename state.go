@@ -84,14 +84,23 @@ func (c *connectionsState) setOpenSockets(pid int, listOpenSockets []lsof.Socket
 	}
 }
 
-func manageState() {
+func manageState(uiFunc func(<-chan *stats.Report, chan<- bool)) {
 	state := newConnectionState()
 	processesChan := make(chan []*lsof.Process)
 	connectionsChan := make(chan []*lsof.ConnectionDetails)
+	reportChan := make(chan *stats.Report)
+	closeChan := make(chan bool)
 	go manageProcceses(processesChan)
 	go manageConnections(connectionsChan)
-	go reportSats(state)
-	for {
+	go reportSats(state, reportChan)
+	go uiFunc(reportChan, closeChan)
+
+	var shouldStop = false
+
+	go func() {
+		shouldStop = <-closeChan
+	}()
+	for !shouldStop {
 		time.Sleep(100 * time.Duration(time.Millisecond))
 		select {
 		case listProcesses := <-processesChan:
@@ -150,19 +159,23 @@ func manageConnections(connectionsChan chan<- []*lsof.ConnectionDetails) {
 	}
 }
 
-func reportSats(c *connectionsState) {
+func reportSats(c *connectionsState, reportChan chan<- *stats.Report) {
 	for {
 		report := stats.NewReport()
 		time.Sleep(500 * time.Duration(time.Millisecond))
 		for pid, sockIdToConnDeets := range c.connDeets {
 			processName := c.processes[pid].Name
-			for _, connDeets := range sockIdToConnDeets {
+			for socketId, connDeets := range sockIdToConnDeets {
 				connectionReport, err := stats.AnalyzeSecurity(connDeets)
 				if err != nil {
 					log.Fatal(err)
 				}
-				report.AddConnectionReport(processName, pid, connectionReport)
+				report.AddConnectionReport(processName, pid, socketId, connectionReport)
 			}
 		}
+		if len(report.ProcessInfo) > 0 {
+			reportChan <- report
+		}
+
 	}
 }

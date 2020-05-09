@@ -1,7 +1,10 @@
 package main
 
-import ()
+import (
+	"github.com/blasrodri/frown/ui"
+)
 
 func main() {
-	manageState()
+	manageState(ui.TerminalUI)
+	//manageState(debug)
 }

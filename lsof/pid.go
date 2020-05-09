@@ -19,7 +19,7 @@ func GetUserProcessList()([]*Process, error) {
 	for i, pid := range listUserPids {
 		process, err := newProcess(pid)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		listProcesses[i] = process
 	}
