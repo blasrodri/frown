@@ -17,7 +17,6 @@ func TerminalUI(reportChan <- chan *stats.Report, closeChan chan <- bool) {
 
 	title := widgets.NewParagraph()
 	title.Text = "Welcome to **Frown**"
-	title.TextAlignment = ui.AlignCenter
 	title.SetRect(0, 0, termWidth, 5)
 	title.Border = false
 	table1 := widgets.NewTable()
