@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/blasrodri/frown/ui"
 	"github.com/blasrodri/frown/lsof"
 	"github.com/blasrodri/frown/stats"
 	"log"
@@ -84,7 +85,7 @@ func (c *connectionsState) setOpenSockets(pid int, listOpenSockets []lsof.Socket
 	}
 }
 
-func manageState(uiFunc func(<-chan *stats.Report, chan<- bool)) {
+func manageState(config *ui.UIConfig, uiFunc func(*ui.UIConfig, <-chan *stats.Report, chan<- bool)) {
 	state := newConnectionState()
 	processesChan := make(chan []*lsof.Process)
 	connectionsChan := make(chan []*lsof.ConnectionDetails)
@@ -93,7 +94,7 @@ func manageState(uiFunc func(<-chan *stats.Report, chan<- bool)) {
 	go manageProcceses(processesChan)
 	go manageConnections(connectionsChan)
 	go reportSats(state, reportChan)
-	go uiFunc(reportChan, closeChan)
+	go uiFunc(config, reportChan, closeChan)
 
 	var shouldStop = false
 
@@ -139,7 +140,7 @@ func manageState(uiFunc func(<-chan *stats.Report, chan<- bool)) {
 
 func manageProcceses(processChan chan<- []*lsof.Process) {
 	for {
-		time.Sleep(500 * time.Duration(time.Millisecond))
+		time.Sleep(200 * time.Duration(time.Millisecond))
 		userPids, err := lsof.GetUserProcessList()
 		if err != nil {
 			log.Fatal(err)
@@ -150,7 +151,7 @@ func manageProcceses(processChan chan<- []*lsof.Process) {
 
 func manageConnections(connectionsChan chan<- []*lsof.ConnectionDetails) {
 	for {
-		time.Sleep(500 * time.Duration(time.Millisecond))
+		time.Sleep(200 * time.Duration(time.Millisecond))
 		connDeets, err := lsof.MonitorUserConnections()
 		if err != nil {
 			log.Fatal(err)
@@ -162,7 +163,7 @@ func manageConnections(connectionsChan chan<- []*lsof.ConnectionDetails) {
 func reportSats(c *connectionsState, reportChan chan<- *stats.Report) {
 	for {
 		report := stats.NewReport()
-		time.Sleep(500 * time.Duration(time.Millisecond))
+		time.Sleep(200 * time.Duration(time.Millisecond))
 		for pid, sockIdToConnDeets := range c.connDeets {
 			processName := c.processes[pid].Name
 			for socketId, connDeets := range sockIdToConnDeets {
