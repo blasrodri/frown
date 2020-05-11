@@ -4,7 +4,12 @@ import (
 	"github.com/blasrodri/frown/ui"
 )
 
+
 func main() {
-	manageState(ui.TerminalUI)
-	//manageState(debug)
+
+	var uiConfig = &ui.UIConfig {
+	FilterSecurityLevel: 1,
+
+	}
+	manageState(uiConfig, ui.TerminalUI)
 }

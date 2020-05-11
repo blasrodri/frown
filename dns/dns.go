@@ -1,12 +1,18 @@
 package dns
 
 import (
+	"fmt"
 	"net"
 	"strings"
 )
 
 func getIpAddr(ipAddr *net.IP) ([]string, error) {
 	return net.LookupAddr(ipAddr.String())
+}
+
+var KnownDomains = map[string]string{
+	"compute.amazonaws.com": "Amazon AWS",
+	"1e100.net":             "Google Cloud",
 }
 
 func DomainName(ipAddr *net.IP) (string, error) {
@@ -23,14 +29,10 @@ func DomainName(ipAddr *net.IP) (string, error) {
 }
 
 func getKnownDomain(dnsDomains []string) (string, error) {
-	knownDomains := map[string]string{
-		"compute.amazonaws.com": "Amazon AWS",
-		"1e100.net":             "Google Cloud",
-	}
 	for _, domain := range dnsDomains {
-		for knownDom, niceName := range knownDomains {
+		for knownDom, niceName := range KnownDomains {
 			if strings.HasSuffix(strings.TrimSuffix(domain, "."), knownDom) {
-				return niceName, nil
+				return fmt.Sprintf("%s (%s)", knownDom, niceName), nil
 			}
 		}
 	}
