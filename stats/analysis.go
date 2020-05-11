@@ -1,12 +1,13 @@
 package stats
 
 import (
-	"github.com/blasrodri/frown/lsof"
 	"github.com/blasrodri/frown/dns"
+	"github.com/blasrodri/frown/lsof"
 )
 
 type ConnectionReport struct {
-	DomainName       string
+	SocketId       string
+	DomainName     string
 	SecurityLevel  int
 	AdditionalInfo string
 }
@@ -18,6 +19,7 @@ func AnalyzeSecurity(connDeet *lsof.ConnectionDetails) (*ConnectionReport, error
 		return nil, err
 	}
 	return &ConnectionReport{
+		SocketId:       connDeet.SocketId,
 		DomainName:     domainName,
 		SecurityLevel:  secLevel,
 		AdditionalInfo: additionalInfo,
