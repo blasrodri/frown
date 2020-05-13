@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/blasrodri/frown/ui"
 	"github.com/blasrodri/frown/lsof"
 	"github.com/blasrodri/frown/stats"
+	"github.com/blasrodri/frown/ui"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -13,6 +14,7 @@ type connectionsState struct {
 	processes       map[int]*lsof.Process
 	listOpenSockets map[int]map[lsof.SocketId]bool
 	socketIdToPid   map[lsof.SocketId]int
+	mux             sync.Mutex
 }
 
 func newConnectionState() *connectionsState {
@@ -92,7 +94,7 @@ func manageState(config *ui.UIConfig, uiFunc func(*ui.UIConfig, <-chan *stats.Re
 	reportChan := make(chan *stats.Report)
 	closeChan := make(chan bool)
 	go manageProcceses(processesChan)
-	go manageConnections(connectionsChan)
+	go manageConnections(state, connectionsChan)
 	go reportSats(state, reportChan)
 	go uiFunc(config, reportChan, closeChan)
 
@@ -105,9 +107,12 @@ func manageState(config *ui.UIConfig, uiFunc func(*ui.UIConfig, <-chan *stats.Re
 		time.Sleep(100 * time.Duration(time.Millisecond))
 		select {
 		case listProcesses := <-processesChan:
+			state.mux.Lock()
 			state.setProcesses(listProcesses)
+			state.mux.Unlock()
 			// remove state associated to dead processes
 			go func() {
+				state.mux.Lock()
 				for pid, _ := range state.processes {
 					p := &lsof.Process{
 						Pid: pid,
@@ -129,9 +134,12 @@ func manageState(config *ui.UIConfig, uiFunc func(*ui.UIConfig, <-chan *stats.Re
 						state.socketIdToPid[socketId] = pid
 					}
 				}
+				state.mux.Unlock()
 			}()
 		case connDeets := <-connectionsChan:
+			state.mux.Lock()
 			state.setConnDetails(connDeets)
+			state.mux.Unlock()
 		default:
 			// Not much to do
 		}
@@ -149,7 +157,7 @@ func manageProcceses(processChan chan<- []*lsof.Process) {
 	}
 }
 
-func manageConnections(connectionsChan chan<- []*lsof.ConnectionDetails) {
+func manageConnections(c *connectionsState, connectionsChan chan<- []*lsof.ConnectionDetails) {
 	for {
 		time.Sleep(200 * time.Duration(time.Millisecond))
 		connDeets, err := lsof.MonitorUserConnections()
@@ -164,7 +172,11 @@ func reportSats(c *connectionsState, reportChan chan<- *stats.Report) {
 	for {
 		report := stats.NewReport()
 		time.Sleep(200 * time.Duration(time.Millisecond))
+		c.mux.Lock()
 		for pid, sockIdToConnDeets := range c.connDeets {
+			if c.processes[pid] == nil {
+				continue
+			}
 			processName := c.processes[pid].Name
 			for socketId, connDeets := range sockIdToConnDeets {
 				connectionReport, err := stats.AnalyzeSecurity(connDeets)
@@ -174,6 +186,7 @@ func reportSats(c *connectionsState, reportChan chan<- *stats.Report) {
 				report.AddConnectionReport(processName, pid, socketId, connectionReport)
 			}
 		}
+		c.mux.Unlock()
 		if len(report.ProcessInfo) > 0 {
 			reportChan <- report
 		}

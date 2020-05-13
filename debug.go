@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	"github.com/blasrodri/frown/stats"
+	"github.com/blasrodri/frown/ui"
 	"strconv"
 )
 
-func debug(reportChan <-chan *stats.Report, closeChan chan <- bool) {
+func debug(config *ui.UIConfig, reportChan <-chan *stats.Report, closeChan chan<- bool) {
 	for {
 
 		report := <-reportChan
