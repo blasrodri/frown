@@ -27,6 +27,18 @@ func TerminalUI(config *UIConfig, reportChan <-chan *stats.Report, closeChan cha
 	title.Border = false
 	table1 := widgets.NewTable()
 
+	go func() {
+		uiEvents := ui.PollEvents()
+		for {
+			e := <-uiEvents
+			switch e.ID {
+			case "q", "<C-c>":
+				closeChan <- true
+				ui.Close()
+			}
+		}
+	}()
+
 	for {
 		report := <-reportChan
 		rows := make([][]string, 0)
@@ -76,16 +88,5 @@ func TerminalUI(config *UIConfig, reportChan <-chan *stats.Report, closeChan cha
 		}
 		table1.SetRect(0, 3, termWidth, termHeight)
 		ui.Render(title, table1)
-		go func() {
-			uiEvents := ui.PollEvents()
-			for {
-				e := <-uiEvents
-				switch e.ID {
-				case "q", "<C-c>":
-					closeChan <- true
-					ui.Close()
-				}
-			}
-		}()
 	}
 }

@@ -9,4 +9,3 @@ and reports the ones that might not be secure. Think of it as a `lsof`, for dumm
 ## Limitations
 
 * Frown only supports Linux. If you would like to use it on another OS, please submit an issue, or preferably a PR :).
-* Sometimes the application crashes, due to a dangling pointer. Needs to be fixed soon!

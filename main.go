@@ -10,5 +10,4 @@ func main() {
 		FilterSecurityLevel: 1,
 	}
 	manageState(uiConfig, ui.TerminalUI)
-	//manageState(uiConfig, debug)
 }
