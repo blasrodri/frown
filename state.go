@@ -39,8 +39,11 @@ func (c *connectionsState) setConnDetails(deets []*lsof.ConnectionDetails) {
 		// and then add the connection details
 		pid, ok := c.socketIdToPid[connDeet.SocketId]
 		if ok {
-			c.connDeets[pid][connDeet.SocketId] = connDeet
-			c.listOpenSockets[pid][connDeet.SocketId] = true
+			_, ok := c.connDeets[pid]
+			if ok {
+				c.connDeets[pid][connDeet.SocketId] = connDeet
+				c.listOpenSockets[pid][connDeet.SocketId] = true
+			}
 		}
 	}
 	// TODO: Calculate hash
@@ -48,6 +51,9 @@ func (c *connectionsState) setConnDetails(deets []*lsof.ConnectionDetails) {
 
 func (c *connectionsState) setProcesses(processes []*lsof.Process) {
 	for _, process := range processes {
+		if c.processes == nil {
+			c.processes = make(map[int]*lsof.Process)
+		}
 		c.processes[process.Pid] = process
 		// If we have not seen this pid before, then create the map
 		// to store its open sockets
@@ -101,7 +107,10 @@ func manageState(config *ui.UIConfig, uiFunc func(*ui.UIConfig, <-chan *stats.Re
 	var shouldStop = false
 
 	go func() {
-		shouldStop = <-closeChan
+		shouldStopTemp := <-closeChan
+		state.mux.Lock()
+		shouldStop = shouldStopTemp
+		state.mux.Unlock()
 	}()
 	for !shouldStop {
 		time.Sleep(100 * time.Duration(time.Millisecond))

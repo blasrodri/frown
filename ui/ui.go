@@ -8,10 +8,12 @@ import (
 	"sort"
 	"strings"
 	"strconv"
+	"sync"
 )
 
 type UIConfig struct {
 	FilterSecurityLevel int
+	Mux sync.Mutex
 }
 
 func TerminalUI(config *UIConfig, reportChan <-chan *stats.Report, closeChan chan<- bool) {
@@ -28,13 +30,17 @@ func TerminalUI(config *UIConfig, reportChan <-chan *stats.Report, closeChan cha
 	table1 := widgets.NewTable()
 
 	go func() {
+		config.Mux.Lock()
 		uiEvents := ui.PollEvents()
+		config.Mux.Unlock()
 		for {
 			e := <-uiEvents
 			switch e.ID {
 			case "q", "<C-c>":
 				closeChan <- true
+				config.Mux.Lock()
 				ui.Close()
+				config.Mux.Unlock()
 			}
 		}
 	}()
@@ -65,6 +71,7 @@ func TerminalUI(config *UIConfig, reportChan <-chan *stats.Report, closeChan cha
 			}
 		})
 
+		config.Mux.Lock()
 		for i, _ := range rows {
 			idx := 1 + i
 			table1.RowStyles[idx] = ui.NewStyle(ui.ColorWhite)
@@ -88,5 +95,6 @@ func TerminalUI(config *UIConfig, reportChan <-chan *stats.Report, closeChan cha
 		}
 		table1.SetRect(0, 3, termWidth, termHeight)
 		ui.Render(title, table1)
+		config.Mux.Unlock()
 	}
 }
