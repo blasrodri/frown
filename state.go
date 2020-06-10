@@ -112,7 +112,8 @@ func manageState(config *ui.UIConfig, uiFunc func(*ui.UIConfig, <-chan *stats.Re
 		shouldStop = shouldStopTemp
 		state.mux.Unlock()
 	}()
-	for !shouldStop {
+	var keepRunning = true
+	for keepRunning {
 		time.Sleep(100 * time.Duration(time.Millisecond))
 		select {
 		case listProcesses := <-processesChan:
@@ -152,6 +153,9 @@ func manageState(config *ui.UIConfig, uiFunc func(*ui.UIConfig, <-chan *stats.Re
 		default:
 			// Not much to do
 		}
+		state.mux.Lock()
+		keepRunning = !shouldStop
+		state.mux.Unlock()
 	}
 }
 
