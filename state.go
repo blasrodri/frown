@@ -10,27 +10,27 @@ import (
 )
 
 type connectionsState struct {
-	connDeets       map[int]map[lsof.SocketId]*lsof.ConnectionDetails
+	connDeets       sync.Map // map[int]map[lsof.SocketId]*lsof.ConnectionDetails
 	processes       sync.Map // map[int]*lsof.Process
-	listOpenSockets map[int]map[lsof.SocketId]bool
+	listOpenSockets sync.Map // map[int]map[lsof.SocketId]bool
 	socketIdToPid   sync.Map // map[lsof.SocketId]int
 	mux             sync.Mutex
 }
 
 func newConnectionState() *connectionsState {
 	return &connectionsState{
-		connDeets:       make(map[int]map[lsof.SocketId]*lsof.ConnectionDetails),
+		connDeets:       sync.Map{}, // make(map[int]map[lsof.SocketId]*lsof.ConnectionDetails),
 		processes:       sync.Map{}, // make(map[int]*lsof.Process),
-		listOpenSockets: make(map[int]map[lsof.SocketId]bool),
+		listOpenSockets: sync.Map{}, // make(map[int]map[lsof.SocketId]bool),
 		socketIdToPid:   sync.Map{},
 	}
 }
 func (c *connectionsState) getConnDetails(pid int) map[string]*lsof.ConnectionDetails {
-	result, ok := c.connDeets[pid]
+	result, ok := c.connDeets.Load(pid)
 	if !ok {
 		return nil
 	}
-	return result
+	return result.(map[string]*lsof.ConnectionDetails)
 }
 
 func (c *connectionsState) setConnDetails(deets []*lsof.ConnectionDetails) {
@@ -39,10 +39,12 @@ func (c *connectionsState) setConnDetails(deets []*lsof.ConnectionDetails) {
 		// and then add the connection details
 		pid, ok := c.socketIdToPid.Load(connDeet.SocketId)
 		if ok {
-			_, ok := c.connDeets[pid.(int)]
+			el, ok := c.connDeets.Load(pid.(int))
 			if ok {
-				c.connDeets[pid.(int)][connDeet.SocketId] = connDeet
-				c.listOpenSockets[pid.(int)][connDeet.SocketId] = true
+				el.(map[string]*lsof.ConnectionDetails)[connDeet.SocketId] = connDeet
+				m, ok := c.listOpenSockets.Load(pid); if ok {
+					m.(map[lsof.SocketId]bool)[connDeet.SocketId] = true
+				}
 			}
 		}
 	}
@@ -54,12 +56,11 @@ func (c *connectionsState) setProcesses(processes []*lsof.Process) {
 		c.processes.Store(process.Pid, process)
 		// If we have not seen this pid before, then create the map
 		// to store its open sockets
-		if c.listOpenSockets[process.Pid] == nil {
-			c.listOpenSockets[process.Pid] = make(map[lsof.SocketId]bool)
-
+		if _, ok := c.listOpenSockets.Load(process.Pid); !ok {
+			c.listOpenSockets.Store(process.Pid, make(map[lsof.SocketId]bool))
 		}
-		if c.connDeets[process.Pid] == nil {
-			c.connDeets[process.Pid] = make(map[lsof.SocketId]*lsof.ConnectionDetails)
+		if _, ok := c.connDeets.Load(process.Pid); !ok {
+			c.connDeets.Store(process.Pid, make(map[lsof.SocketId]*lsof.ConnectionDetails))
 
 		}
 	}
@@ -85,15 +86,26 @@ func (c *connectionsState) getAllPIDs() []int {
 }
 
 func (c *connectionsState) setOpenSockets(pid int, listOpenSockets []lsof.SocketId) {
-	mOpSock := make(map[lsof.SocketId]bool, len(c.listOpenSockets))
+	numOpenSockets := 0
+	c.listOpenSockets.Range(func(key, value interface{}) bool {
+		numOpenSockets += 1
+		return true
+	})
+
+	mOpSock := make(map[lsof.SocketId]bool, numOpenSockets)
 	for _, v := range listOpenSockets {
 		mOpSock[v] = true
 	}
 
-	for k, _ := range c.listOpenSockets[pid] {
+	openSocketsPid, _ := c.listOpenSockets.Load(pid)
+
+	for k, _ := range openSocketsPid.(map[lsof.SocketId]bool) {
 		_, ok := mOpSock[k]
 		if !ok {
-			delete(c.connDeets[pid], k)
+			m, ok := c.connDeets.Load(pid)
+			if ok {
+				delete(m.(map[lsof.SocketId]*lsof.ConnectionDetails), k)
+			}
 		}
 	}
 }
@@ -135,15 +147,15 @@ func manageState(config *ui.UIConfig, uiFunc func(*ui.UIConfig, <-chan *stats.Re
 					openSocketsPid, err := lsof.ListOpenSockets(p)
 					if err != nil {
 						// Assume that the pid is dead. Remove it from the state
-						delete(state.connDeets, pid.(int))
+						state.connDeets.Delete(pid)
 						state.processes.Delete(pid)
-						openSocketsForPid, ok := state.listOpenSockets[pid.(int)]
+						openSocketsForPid, ok := state.listOpenSockets.Load(pid)
 						if ok {
-							for openSock, _ := range openSocketsForPid {
+							for openSock, _ := range openSocketsForPid.(map[lsof.SocketId]bool) {
 								state.socketIdToPid.Delete(openSock)
 							}
 						}
-						delete(state.listOpenSockets, pid.(int))
+						state.listOpenSockets.Delete(pid)
 					}
 					for _, socketId := range openSocketsPid {
 						state.socketIdToPid.Store(socketId, pid)
@@ -192,20 +204,22 @@ func reportSats(c *connectionsState, reportChan chan<- *stats.Report) {
 		report := stats.NewReport()
 		time.Sleep(200 * time.Duration(time.Millisecond))
 		c.mux.Lock()
-		for pid, sockIdToConnDeets := range c.connDeets {
-			if _, present := c.processes.Load(pid); !present {
-				continue
+		c.connDeets.Range(func(pid, sockIdToConnDeets interface{}) bool {
+			//for pid, sockIdToConnDeets := range c.connDeets {
+			if _, present := c.processes.Load(pid.(int)); !present {
+				return true
 			}
-			procInfo, _ := c.processes.Load(pid)
+			procInfo, _ := c.processes.Load(pid.(int))
 			processName := procInfo.(*lsof.Process).Name
-			for socketId, connDeets := range sockIdToConnDeets {
+			for socketId, connDeets := range sockIdToConnDeets.(map[lsof.SocketId]*lsof.ConnectionDetails) {
 				connectionReport, err := stats.AnalyzeSecurity(connDeets)
 				if err != nil {
 					log.Fatal(err)
 				}
-				report.AddConnectionReport(processName, pid, socketId, connectionReport)
+				report.AddConnectionReport(processName, pid.(int), socketId, connectionReport)
 			}
-		}
+			return true
+		})
 		c.mux.Unlock()
 		if len(report.ProcessInfo) > 0 {
 			reportChan <- report
