@@ -73,7 +73,7 @@ func TerminalUI(config *UIConfig, reportChan <-chan *stats.Report, closeChan cha
 		})
 
 		config.Mux.Lock()
-		for i, _ := range rows {
+		for i := range rows {
 			idx := 1 + i
 			table1.RowStyles[idx] = ui.NewStyle(ui.ColorWhite)
 		}
