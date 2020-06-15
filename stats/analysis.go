@@ -3,13 +3,14 @@ package stats
 import (
 	"fmt"
 	"net"
+	"strconv"
+
 	"github.com/blasrodri/frown/dns"
 	"github.com/blasrodri/frown/lsof"
-	"strconv"
 )
 
 type ConnectionReport struct {
-	SocketId       string
+	SocketID       string
 	DomainName     string
 	SecurityLevel  int
 	AdditionalInfo string
@@ -22,7 +23,7 @@ func AnalyzeSecurity(connDeet *lsof.ConnectionDetails) (*ConnectionReport, error
 	}
 	secLevel, additionalInfo := getSecurityLevel(domainName, connDeet)
 	return &ConnectionReport{
-		SocketId:       connDeet.SocketId,
+		SocketID:       connDeet.SocketID,
 		DomainName:     domainName,
 		SecurityLevel:  secLevel,
 		AdditionalInfo: additionalInfo,
@@ -96,7 +97,6 @@ func portHeuristic(connDeet *lsof.ConnectionDetails) (int, string) {
 	if contains(unEncryptedRemotePorts, remotePort) {
 		return 2, "Connection not encrypted"
 	}
-
 
 	if contains(sshPort, remotePort) {
 		return 0, ""

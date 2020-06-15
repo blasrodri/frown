@@ -1,19 +1,20 @@
 package ui
 
 import (
+	"log"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+
 	"github.com/blasrodri/frown/stats"
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
-	"log"
-	"sort"
-	"strings"
-	"strconv"
-	"sync"
 )
 
 type UIConfig struct {
 	FilterSecurityLevel int
-	Mux sync.Mutex
+	Mux                 sync.Mutex
 }
 
 func TerminalUI(config *UIConfig, reportChan <-chan *stats.Report, closeChan chan<- bool) {
@@ -49,24 +50,24 @@ func TerminalUI(config *UIConfig, reportChan <-chan *stats.Report, closeChan cha
 		report := <-reportChan
 		rows := make([][]string, 0)
 		for processName, mapConnRep := range report.ProcessInfo {
-			for pid, socketIdMapConnReport := range mapConnRep {
-				for _, connReport := range socketIdMapConnReport {
+			for pid, SocketIDMapConnReport := range mapConnRep {
+				for _, connReport := range SocketIDMapConnReport {
 					if connReport.SecurityLevel >= config.FilterSecurityLevel {
 						rows = append(rows, []string{processName, strconv.Itoa(pid), connReport.DomainName, connReport.AdditionalInfo, strconv.Itoa(connReport.SecurityLevel)})
 					}
 				}
 			}
 		}
-		table1.Rows = make([][]string, len(rows) + 1)
+		table1.Rows = make([][]string, len(rows)+1)
 		table1.Rows[0] = []string{"Process", "PID", "Domain", "Additional Info"}
 
 		sort.Slice(rows, func(i, j int) bool {
-			switch(strings.Compare(rows[i][0], rows[j][0])) {
-				case -1:
+			switch strings.Compare(rows[i][0], rows[j][0]) {
+			case -1:
 				return true
-				case 0:
+			case 0:
 				return strings.Compare(rows[i][2], rows[j][2]) == -1
-				default:
+			default:
 				return false
 			}
 		})
@@ -79,8 +80,8 @@ func TerminalUI(config *UIConfig, reportChan <-chan *stats.Report, closeChan cha
 
 		for i, row := range rows {
 			idx := 1 + i
-			table1.Rows[idx] = row[:len(row) - 1]
-			secLevel, _ := strconv.Atoi(row[len(row) - 1])
+			table1.Rows[idx] = row[:len(row)-1]
+			secLevel, _ := strconv.Atoi(row[len(row)-1])
 			switch secLevel {
 			case 0:
 			case 1:

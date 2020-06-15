@@ -4,11 +4,11 @@ import (
 	"io/ioutil"
 	"os"
 	"os/user"
-	"syscall"
 	"strconv"
+	"syscall"
 )
 
-func GetUserProcessList()([]*Process, error) {
+func GetUserProcessList() ([]*Process, error) {
 	listUserPids, err := getUserPids()
 	listProcesses := make([]*Process, len(listUserPids))
 
@@ -28,9 +28,9 @@ func GetUserProcessList()([]*Process, error) {
 }
 
 func getUserPids() ([]int, error) {
-	userInfo, err := user.Current()
-	userUid, err:= strconv.Atoi(userInfo.Uid)
-	userGuid, err:= strconv.Atoi(userInfo.Uid)
+	userInfo, _ := user.Current()
+	userUID, _ := strconv.Atoi(userInfo.Uid)
+	userGUID, err := strconv.Atoi(userInfo.Uid)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func getUserPids() ([]int, error) {
 		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
 			UID = int(stat.Uid)
 			GID = int(stat.Gid)
-			if UID ==  userUid || GID == userGuid {
+			if UID == userUID || GID == userGUID {
 				pid, err := strconv.Atoi(info.Name())
 				if err != nil {
 					return nil, err
@@ -72,8 +72,8 @@ func getUserPids() ([]int, error) {
 					UID = int(stat.Uid)
 					GID = int(stat.Gid)
 
-					if UID ==  userUid || GID == userGuid {
-						pids = append(pids,pid)
+					if UID == userUID || GID == userGUID {
+						pids = append(pids, pid)
 					}
 				}
 			}

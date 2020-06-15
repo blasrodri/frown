@@ -9,17 +9,17 @@ import (
 	"strings"
 )
 
-type SocketId = string
+type SocketID = string
 type ConnectionDetails struct {
-	SocketId       SocketId
+	SocketID       SocketID
 	LocalAddrIP    net.IP
 	LocalAddrPort  string
 	RemoteAddrIP   net.IP
 	RemoteAddrPort string
 }
 
-func ListOpenSockets(p *Process) ([]SocketId, error) {
-	listFDNames := make([]SocketId, 0)
+func ListOpenSockets(p *Process) ([]SocketID, error) {
+	listFDNames := make([]SocketID, 0)
 	procPidPath := fmt.Sprintf("/proc/%d/fd/", p.Pid)
 	files, err := ioutil.ReadDir(procPidPath)
 	if err != nil {
@@ -66,7 +66,7 @@ func MonitorUserConnections() ([]*ConnectionDetails, error) {
 		return nil, errors.New("There are no open connections at the moment")
 	}
 	// the first line is a header that we do not care about
-	openConnections := connectionListStr[1:len(connectionListStr) - 1]
+	openConnections := connectionListStr[1 : len(connectionListStr)-1]
 	openConnectionsResult := make([]*ConnectionDetails, len(openConnections))
 	for i, line := range openConnections {
 		fields := strings.Fields(line)
@@ -85,12 +85,12 @@ func MonitorUserConnections() ([]*ConnectionDetails, error) {
 func getConnectionDetails(connectionFields []string) (*ConnectionDetails, error) {
 	// parse the /proc/{pid}/tcp line
 	sid := connectionFields[9]
-	localAddrIP := hexIpToDecimal(connectionFields[1][:8])
+	localAddrIP := hexIPToDecimal(connectionFields[1][:8])
 	localAddrPort := hexPortToDecimal(connectionFields[1][9:])
-	remoteAddrIP := hexIpToDecimal(connectionFields[2][:8])
+	remoteAddrIP := hexIPToDecimal(connectionFields[2][:8])
 	remoteAddrPort := hexPortToDecimal(connectionFields[2][9:])
 	return &ConnectionDetails{
-		SocketId:       sid,
+		SocketID:       sid,
 		LocalAddrIP:    net.ParseIP(localAddrIP),
 		LocalAddrPort:  localAddrPort,
 		RemoteAddrIP:   net.ParseIP(remoteAddrIP),
