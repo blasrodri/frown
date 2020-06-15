@@ -1,5 +1,7 @@
 # FROWN
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/blasrodri/frown)](https://goreportcard.com/report/github.com/blasrodri/frown)
+
 ![forwn-screencast](frown.gif)
 
 Frown provides a user-friendly interface to visualize the status of all open connections
@@ -8,4 +10,4 @@ and reports the ones that might not be secure. Think of it as a `lsof`, for dumm
 
 ## Limitations
 
-* Frown only supports Linux. If you would like to use it on another OS, please submit an issue, or preferably a PR :).
+- Frown only supports Linux. If you would like to use it on another OS, please submit an issue, or preferably a PR :).
